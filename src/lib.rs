@@ -1,66 +1,50 @@
-pub trait Walker<Unit> {
-    type Adapter<C>;
-    type Error<E>;
+mod impls;
 
-    fn is_flat(&self) -> bool;
-    fn walk<T, C>(
-        self,
-        transformer: &mut T,
-        adapter: &mut Self::Adapter<C>,
-        collector: &mut C,
-    ) -> Result<(), Self::Error<C::Error>>
-    where
-        T: Transformer<Unit>,
-        C: Collector<T::Output>,
-        Self::Adapter<C>: Adapter<C>;
-}
-
-pub trait Transformer<Unit> {
-    type Output;
-
-    fn transform(&mut self, data: Unit) -> Self::Output;
-}
-
-pub trait Adapter<C> {}
-
-pub trait Collector<Unit> {
+pub trait Collector {
     type Output;
     type Error;
+    type Meta: ?Sized;
 
-    fn collect(&mut self, data: Unit) -> Result<(), Self::Error>;
     fn finish(self) -> Result<Self::Output, Self::Error>;
-}
 
-impl<F: FnMut(Unit) -> Output, Unit, Output> Transformer<Unit> for F {
-    type Output = Output;
-
-    fn transform(&mut self, data: Unit) -> Self::Output {
-        self(data)
+    fn serialize<W>(walker: &W) -> Result<Self::Output, Self::Error>
+    where
+        Self: Default,
+        W: Walker<Self>,
+    {
+        let mut this = Self::default();
+        walker.walk(&mut this)?;
+        this.finish()
     }
 }
 
-#[macro_export]
-macro_rules! wrap_unit {
-    ( $typ:path, $unit:path, $wrapper:expr ) => {
-        impl Walker<$unit> for $typ {
-            type Adapter<C> = ();
-            type Error<E> = E;
+pub trait Collect<T: ?Sized>: Collector {
+    fn collect(&mut self, data: &T, meta: &Self::Meta) -> Result<(), Self::Error>;
+}
 
-            fn is_flat(&self) -> bool { true }
-            fn walk<T, C>(
-                self,
-                transformer: &mut T,
-                adapter: &mut Self::Adapter<C>,
-                collector: &mut C,
-            ) -> Result<(), Self::Error<C::Error>>
-            where
-                T: Transformer<$unit>,
-                C: Collector<T::Output>,
-                Self::Adapter<C>: Adapter<C>
-            {
-                let data = transformer.transform($wrapper(self));
-                collector.collect(data)
-            }
-        }
-    };
+pub trait Provide<M: ?Sized>: Collector {
+    type Adapter: Collector<Error = Self::Error, Meta = M>;
+
+    fn provide(&self) -> Self::Adapter;
+    fn restore(&mut self, adapter: Self::Adapter, meta: &Self::Meta) -> Result<(), Self::Error>;
+}
+
+pub trait Walker<C: Collector> {
+    fn walk(&self, collector: &mut C) -> Result<(), C::Error>;
+}
+
+pub trait Append<C: Collector> {
+    fn append(&self, collector: &mut C, meta: &C::Meta) -> Result<(), C::Error>;
+}
+
+pub trait Atom {}
+
+pub use never::Never;
+mod never {
+    #[doc(hidden)]
+    pub trait Extract { type R; }
+    impl<R> Extract for fn() -> R { type R = R; }
+
+    /// The `!` type, extracted for your convenience.
+    pub type Never = <fn() -> ! as Extract>::R;
 }

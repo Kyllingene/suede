@@ -33,14 +33,23 @@ pub trait Collector {
 
 /// A [`Collector`] that can collect a given type.
 pub trait Collect<T: ?Sized>: Collector {
+    /// Collect a single item, with relevant metadata.
     fn collect(&mut self, data: &T, meta: &Self::Meta) -> Result<(), Self::Error>;
 }
 
 /// A [`Collector`] that can nest other collectors.
 pub trait Provide<M: ?Sized>: Collector {
+    /// The collector to be returned.
+    ///
+    /// For simplicity's sake, it must share an error type with its parent.
     type Adapter: Collector<Error = Self::Error, Meta = M>;
 
+    /// Create and return an adapter.
     fn provide(&self) -> Self::Adapter;
+
+    /// Absorb an adapter as if it were a "normal" item.
+    ///
+    /// Essentially `collect` for `Self::Adapter`.
     fn restore(&mut self, adapter: Self::Adapter, meta: &Self::Meta) -> Result<(), Self::Error>;
 }
 

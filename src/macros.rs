@@ -1,4 +1,4 @@
-/// Implements [`Append`] for each item, for the given collector.
+/// Implements [`Append`](crate::Append) for each item, for the given collector.
 #[macro_export]
 macro_rules! atom {
     ($(

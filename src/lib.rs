@@ -4,7 +4,7 @@ mod impls;
 mod macros;
 
 pub mod prelude {
-    pub use crate::{Append, Collect, Collector, Never, Provide, Walker};
+    pub use crate::{Append, Collect, Collector, Never, Provide, Walker, EnumTag};
 }
 
 /// An object that collects bits of incongruous data, producing the final result
@@ -72,6 +72,26 @@ pub trait Walker<C: Collector> {
 /// An object that can be submitted to a collector.
 pub trait Append<C: Collector> {
     fn append(&self, collector: &mut C, meta: &C::Meta) -> Result<(), C::Error>;
+}
+
+/// The string name of an enum variant.
+///
+/// See [`new`](EnumTag::new).
+#[repr(transparent)]
+pub struct EnumTag(pub str);
+
+impl EnumTag {
+    /// Create a new tag from a string.
+    pub fn new(tag: &str) -> &Self {
+        // SAFETY: repr(transparent)
+        unsafe { std::mem::transmute(tag) }
+    }
+}
+
+impl core::ops::Deref for EnumTag {
+    type Target = str;
+
+    fn deref(&self) -> &str { &self.0 }
 }
 
 pub use never::Never;

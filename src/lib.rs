@@ -1,5 +1,9 @@
 mod impls;
 
+pub mod prelude {
+    pub use crate::{Append, Collect, Collector, Never, Provide, Walker};
+}
+
 /// An object that collects bits of incongruous data, producing the final result
 /// of the ser/de chain.
 ///
@@ -62,21 +66,48 @@ pub trait Walker<C: Collector> {
     fn walk(&self, collector: &mut C) -> Result<(), C::Error>;
 }
 
-/// An object that can be submitted to a collector like any other.
+/// An object that can be submitted to a collector.
 pub trait Append<C: Collector> {
     fn append(&self, collector: &mut C, meta: &C::Meta) -> Result<(), C::Error>;
 }
 
 // TODO: provide impls for `&Walker`, `Box<Append>`, etc.
 
-/// A temporary trait while things are worked out.
-pub trait Atom {}
+/// Implements [`Append`] for each item, for the given collector.
+#[macro_export]
+macro_rules! atom {
+    ($(
+        $(#[$($gen:tt)*])?
+        $collector:ty : $atom:ty $(, $rest:ty)*
+    );* $(;)?) => {$(
+        impl$(<$($gen)*>)? $crate::Append<$collector> for $atom {
+            fn append(
+                &self,
+                collector: &mut $collector,
+                meta: &<$collector as $crate::Collector>::Meta,
+            ) -> Result<(), <$collector as $crate::Collector>::Error> {
+                collector.collect(self, meta)
+            }
+        }
+
+        $crate::atom![$(#[$($gen)*])? $collector : $($rest),*];
+    )*};
+
+    ($(
+        $(#[$($gen:tt)*])?
+        $collector:ty : 
+    );* $(;)?) => {};
+}
 
 pub use never::Never;
 mod never {
     #[doc(hidden)]
-    pub trait Extract { type R; }
-    impl<R> Extract for fn() -> R { type R = R; }
+    pub trait Extract {
+        type R;
+    }
+    impl<R> Extract for fn() -> R {
+        type R = R;
+    }
 
     /// The `!` type, extracted for your convenience.
     pub type Never = <fn() -> ! as Extract>::R;

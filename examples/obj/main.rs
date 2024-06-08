@@ -1,7 +1,7 @@
 use suede::Collector;
 
-mod walk;
 mod coll;
+mod walk;
 
 use coll::*;
 

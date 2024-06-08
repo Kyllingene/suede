@@ -1,7 +1,7 @@
 use suede::*;
 
-mod walk;
 mod coll;
+mod walk;
 
 use coll::Hasher;
 

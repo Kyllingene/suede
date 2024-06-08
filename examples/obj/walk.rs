@@ -1,6 +1,6 @@
 use suede::*;
 
-use crate::{Foo, Bar};
+use crate::{Bar, Foo};
 
 impl<C> Walker<C> for Foo
 where

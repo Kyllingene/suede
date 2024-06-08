@@ -1,6 +1,11 @@
-use suede::*;
+use suede::prelude::*;
 
 use std::marker::PhantomData;
+
+// TODO: this doesn't allow users to add their own types very easily
+suede::atom!(
+    #[M: Hash + ?Sized] Hasher<M>: u64, i64, bool, str, String, ()
+);
 
 pub trait Hash {
     fn hash(&self, state: &mut u64);
@@ -64,7 +69,10 @@ impl<M: ?Sized> Default for Hasher<M> {
 
 impl<M: ?Sized> Hasher<M> {
     pub fn new() -> Self {
-        Self { state: 0, _marker: PhantomData }
+        Self {
+            state: 0,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -73,7 +81,9 @@ impl<M: ?Sized> Collector for Hasher<M> {
     type Error = Never;
     type Meta = M;
 
-    fn finish(self) -> Result<u64, Never> { Ok(self.state) }
+    fn finish(self) -> Result<u64, Never> {
+        Ok(self.state)
+    }
 }
 
 impl<M: Hash + ?Sized, N: Hash + ?Sized> Provide<N> for Hasher<M> {

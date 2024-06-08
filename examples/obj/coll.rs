@@ -1,6 +1,11 @@
-use suede::*;
+use suede::prelude::*;
 
 use std::fmt::Write;
+
+suede::atom![
+    Dict: i64, bool, String;
+    List: i64, bool, String;
+];
 
 collector![
     pub Dict = [

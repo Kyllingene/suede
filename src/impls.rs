@@ -1,4 +1,4 @@
-use crate::{Provide, Append, Atom, Walker, Collect, Collector};
+use crate::{Append, Collector, Provide, Walker};
 
 // impls for Vec and [T] not provided yet, but are trivial
 impl<T, C, const N: usize> Walker<C> for [T; N]
@@ -23,22 +23,5 @@ where
         let mut list = collector.provide();
         self.walk(&mut list)?;
         collector.restore(list, meta)
-    }
-}
-
-// for convenience, currently working out whether or not they're required
-impl Atom for i64 {}
-impl Atom for bool {}
-impl Atom for str {}
-impl Atom for String {}
-impl<'a, T: Atom> Atom for &'a T {}
-
-impl<W, C> Append<C> for W
-where
-    W: Atom + ?Sized,
-    C: Collect<W>,
-{
-    fn append(&self, collector: &mut C, meta: &C::Meta) -> Result<(), C::Error> {
-        collector.collect(self, meta)
     }
 }

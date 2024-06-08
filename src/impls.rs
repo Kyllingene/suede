@@ -1,5 +1,6 @@
 use crate::{Provide, Append, Atom, Walker, Collect, Collector};
 
+// impls for Vec and [T] not provided yet, but are trivial
 impl<T, C, const N: usize> Walker<C> for [T; N]
 where
     T: Append<C>,
@@ -25,6 +26,7 @@ where
     }
 }
 
+// for convenience, currently working out whether or not they're required
 impl Atom for i64 {}
 impl Atom for bool {}
 impl Atom for str {}

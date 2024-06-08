@@ -1,4 +1,7 @@
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
+
 mod impls;
+mod macros;
 
 pub mod prelude {
     pub use crate::{Append, Collect, Collector, Never, Provide, Walker};
@@ -69,34 +72,6 @@ pub trait Walker<C: Collector> {
 /// An object that can be submitted to a collector.
 pub trait Append<C: Collector> {
     fn append(&self, collector: &mut C, meta: &C::Meta) -> Result<(), C::Error>;
-}
-
-// TODO: provide impls for `&Walker`, `Box<Append>`, etc.
-
-/// Implements [`Append`] for each item, for the given collector.
-#[macro_export]
-macro_rules! atom {
-    ($(
-        $(#[$($gen:tt)*])?
-        $collector:ty : $atom:ty $(, $rest:ty)*
-    );* $(;)?) => {$(
-        impl$(<$($gen)*>)? $crate::Append<$collector> for $atom {
-            fn append(
-                &self,
-                collector: &mut $collector,
-                meta: &<$collector as $crate::Collector>::Meta,
-            ) -> Result<(), <$collector as $crate::Collector>::Error> {
-                collector.collect(self, meta)
-            }
-        }
-
-        $crate::atom![$(#[$($gen)*])? $collector : $($rest),*];
-    )*};
-
-    ($(
-        $(#[$($gen:tt)*])?
-        $collector:ty : 
-    );* $(;)?) => {};
 }
 
 pub use never::Never;

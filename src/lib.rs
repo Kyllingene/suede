@@ -1,66 +1,38 @@
-pub trait Walker<Unit> {
-    type Adapter<C>;
-    type Error<E>;
+#![cfg_attr(not(test), no_std)]
 
-    fn is_flat(&self) -> bool;
-    fn walk<T, C>(
-        self,
-        transformer: &mut T,
-        adapter: &mut Self::Adapter<C>,
-        collector: &mut C,
-    ) -> Result<(), Self::Error<C::Error>>
-    where
-        T: Transformer<Unit>,
-        C: Collector<T::Output>,
-        Self::Adapter<C>: Adapter<C>;
-}
+mod macros;
 
-pub trait Transformer<Unit> {
-    type Output;
-
-    fn transform(&mut self, data: Unit) -> Self::Output;
-}
-
-pub trait Adapter<C> {}
-
-pub trait Collector<Unit> {
-    type Output;
+pub trait Collector {
     type Error;
-
-    fn collect(&mut self, data: Unit) -> Result<(), Self::Error>;
-    fn finish(self) -> Result<Self::Output, Self::Error>;
+    type Meta: ?Sized;
 }
 
-impl<F: FnMut(Unit) -> Output, Unit, Output> Transformer<Unit> for F {
-    type Output = Output;
+pub trait Collect<T: ?Sized>: Collector {
+    fn collect(&mut self, data: &T, meta: &Self::Meta) -> Result<(), Self::Error>;
+}
 
-    fn transform(&mut self, data: Unit) -> Self::Output {
-        self(data)
+pub trait Adapt<M: ?Sized>: Collector {
+    type Adapter: Collector<Error = Self::Error, Meta = M>;
+
+    fn adapt(&mut self) -> Self::Adapter;
+    fn retract(&mut self, adapter: Self::Adapter, meta: &Self::Meta) -> Result<(), Self::Error>;
+}
+
+pub trait Submit<C: Collector> {
+    fn submit(&self, collector: &mut C, meta: &C::Meta) -> Result<(), C::Error>;
+}
+
+pub trait Walk<C: Collector> {
+    fn walk(&self, collector: &mut C) -> Result<(), C::Error>;
+}
+
+mod never {
+    pub trait Extract {
+        type R;
     }
+    impl<T> Extract for fn() -> T {
+        type R = T;
+    }
+    pub type Never = <fn() -> ! as Extract>::R;
 }
-
-#[macro_export]
-macro_rules! wrap_unit {
-    ( $typ:path, $unit:path, $wrapper:expr ) => {
-        impl Walker<$unit> for $typ {
-            type Adapter<C> = ();
-            type Error<E> = E;
-
-            fn is_flat(&self) -> bool { true }
-            fn walk<T, C>(
-                self,
-                transformer: &mut T,
-                adapter: &mut Self::Adapter<C>,
-                collector: &mut C,
-            ) -> Result<(), Self::Error<C::Error>>
-            where
-                T: Transformer<$unit>,
-                C: Collector<T::Output>,
-                Self::Adapter<C>: Adapter<C>
-            {
-                let data = transformer.transform($wrapper(self));
-                collector.collect(data)
-            }
-        }
-    };
-}
+pub use never::Never;
